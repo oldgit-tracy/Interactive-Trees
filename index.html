@@ -1,0 +1,415 @@
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Homework 4 -- Trees</title>
+
+  <!-- load D3 //-->
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+
+  <!-- load custom CSS //-->
+  <link href="http://fonts.googleapis.com/css?family=Source+Sans+Pro:300,900|Source+Code+Pro:300" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="style.css">
+
+  <!-- load custom JavaScript //-->
+  <script src="helpers.js"></script>
+  <script src="tooltip.js"></script>
+</head>
+
+<body>
+<h2>Traditional Node Layout, Straight Edges</h2>
+<svg id="traditional"></svg>
+
+<h2>Dendrogram Node Layout, Curved Edges</h2>
+<svg id="dendrogram"></svg>
+
+<h2>Circular Traditional Node Layout, Straight Edges</h2>
+<svg id="circular_traditional"></svg>
+
+<h2>Circular Dendrogram Node Layout, Curved Edges</h2>
+<svg id="circular_dendrogram"></svg>
+
+<h2>Circle Packing</h2>
+<svg id="circle_packing"></svg>
+
+<h2>Treemap</h2>
+<svg id="treemap"></svg>
+
+<h2>Icicle Layout</h2>
+<svg id="icicle_layout"></svg>
+
+<script>
+// used to color node by depth
+var color = d3.scaleOrdinal(d3.schemeSet2);
+
+// accessor functions for x and y
+var x = function(d) { return d.x; };
+var y = function(d) { return d.y; };
+
+// normal line generator
+var line = d3.line()
+  .curve(d3.curveLinear)
+  .x(x)
+  .y(y);
+
+// configure size, margin, and circle radius
+var config = {
+    w: 900,
+    h: 450,
+    r: 4,
+    pad: 10
+};
+
+// maximum diameter of circle is minimum dimension
+config.d = Math.min(config.w, config.h);
+
+var file = "java8.csv";
+
+d3.csv(file, convert, callback);
+
+function convert(row) {
+  var parts = row.name.split(".")
+  row.names = parts[parts.length - 1];
+  row.size = +row.size;
+  return row;
+}
+
+function callback(error, data) {
+    if (error) {
+        console.warn(file, error);
+        return;
+    }
+
+    console.log("data:", data.length, data);
+
+    // TODO
+    // used to create hierarchies
+    // https://github.com/d3/d3-hierarchy#stratify
+    var stratify= d3.stratify()
+    .id(function(d) {return d.name})
+    .parentId(function(d){
+      // should match existing id (except for root)
+      return d.name.substring(0, d.name.lastIndexOf("."));
+    })
+
+    // convert csv into hierarchy
+    var root=stratify(data);
+
+    // sort by height then value
+    // https://github.com/d3/d3-hierarchy#node_sort
+    root.sort(function(a, b){
+      if (a.height != b.height){
+        return d3.ascending(a.height, b.height)
+      }
+      else{
+        return d3.ascending(a.size, b.size);
+      }
+    })
+
+
+    console.log("root:", root);
+
+
+
+
+    drawTraditionalStraight("traditional", root.copy());
+    drawDendrogramCurved("dendrogram", root.copy());
+    drawCircularTraditional("circular_traditional", root.copy());
+    drawCircularDendrogram("circular_dendrogram", root.copy());
+    drawCirclePacking("circle_packing", root.copy());
+    drawTreeMap("treemap", root.copy());
+    drawIcicleLayout("icicle_layout", root.copy());
+}
+
+function drawNodes(g, nodes, raise) {
+  g.selectAll("circle")
+    .data(nodes)
+    .enter()
+    .append("circle")
+      .attr("r", function(d) { return d.r ? d.r : config.r; })
+      .attr("cx", x)
+      .attr("cy", y)
+      .attr("id", function(d) { return d.data.name; })
+      .attr("class", "node")
+      .style("fill", function(d) {return color(d.depth)})
+      .on("mouseover.tooltip", function(d) {
+        show_tooltip(g, d3.select(this));
+        d3.select(this).classed("selected", true);
+        if (raise) {
+          d3.select(this).raise();
+        }
+      })
+      .on("mouseout.tooltip", function(d) {
+        g.select("#tooltip").remove();
+        d3.select(this).classed("selected", false);
+      });
+}
+
+function drawLinks(g, links, generator) {
+  var paths = g.selectAll("path")
+    .data(links)
+    .enter()
+    .append("path")
+    .attr("d", generator)
+    .attr("class", "link");
+}
+
+function drawTraditionalStraight(id, root) {
+  var svg = d3.select("body").select("#" + id);
+  svg.attr("width", config.w);
+  svg.attr("height", config.h);
+
+  var g = svg.append("g");
+  g.attr("id", "plot");
+  g.attr("transform", translate(config.pad, config.pad));
+
+  // TODO
+  var tree = d3.tree()
+    .size([config.w - 2 * config.pad,
+            config.h - 2 * config.pad]);
+
+  // run layout to calculate x, y attributes
+  tree(root);
+
+  var straightLine = function(d) {
+    return line([d.source, d.target]);
+  }
+
+  drawLinks(g, root.links(), straightLine);
+  drawNodes(g, root.descendants(), true);
+
+}
+
+function drawDendrogramCurved(id, root) {
+  var svg = d3.select("body").select("#" + id);
+  svg.attr("width", config.w);
+  svg.attr("height", config.h);
+
+  var g = svg.append("g");
+  g.attr("id", "plot");
+  g.attr("transform", translate(config.pad, config.pad));
+
+  // TODO
+  // setup node layout generator
+  var cluster = d3.cluster()
+    .size([ config.w - 2 * config.pad,
+            config.h - 2 * config.pad]);
+
+  // run layout to calculate x, y attributes
+  cluster(root);
+
+  // create line generator
+  var curvedLine = function(d) {
+    // select edge layout generator for curved lines
+    // https://github.com/d3/d3-shape/issues/27
+    var mid = (d.source.y + d.target.y) / 2;
+    return "M" + d.source.x + "," + d.source.y
+      + "C" + d.source.x + "," + mid
+      + " " + d.target.x + "," + mid
+      + " " + d.target.x + "," + d.target.y;
+  }
+
+  drawLinks(g, root.links(), curvedLine);
+  drawNodes(g, root.descendants(), true);
+
+}
+
+function drawCircularTraditional(id, root) {
+  var svg = d3.select("body").select("#" + id);
+  svg.attr("width", config.w);
+  svg.attr("height", config.h);
+
+  var g = svg.append("g");
+  g.attr("id", "plot");
+
+  // for polar coordinates, easier if treat (0, 0) as center
+  g.attr("transform", translate(config.w / 2, config.h / 2));
+
+  // setup node layout generator
+  // let x be theta (in degrees) and y be radial
+  var tree = d3.tree().size([360, (config.d / 2) - config.pad]);
+
+  // run layout to calculate x, y attributes
+  tree(root);
+
+  // x, y are in polar coordinates
+  // must convert back into cartesian coordinates
+  root.each(function(d) {
+    d.theta = d.x;
+    d.radial = d.y;
+
+    var point = toCartesian(d.radial, d.theta);
+    d.x = point.x;
+    d.y = point.y;
+  });
+
+  // create line generator
+  var straightLine = function(d) {
+    return line([d.source, d.target]);
+  }
+
+  drawLinks(g, root.links(), straightLine);
+  drawNodes(g, root.descendants(), true);
+}
+
+function drawCircularDendrogram(id, root) {
+  var svg = d3.select("body").select("#" + id);
+  svg.attr("width", config.w);
+  svg.attr("height", config.h);
+
+  var g = svg.append("g");
+  g.attr("id", "plot");
+
+  // for polar coordinates, easier if treat (0, 0) as center
+    g.attr("transform", translate(config.w / 2, config.h / 2));
+
+    // setup node layout generator
+    // let x be theta (in degrees) and y be radial
+    var cluster = d3.cluster().size([360, (config.d / 2) - config.pad]);
+
+    // run layout to calculate x, y attributes
+    cluster(root);
+
+    // x, y are in polar coordinates
+    // must convert back into cartesian coordinates
+    root.each(function(d) {
+      d.theta = d.x;
+      d.radial = d.y;
+
+      var point = toCartesian(d.radial, d.theta);
+      d.x = point.x;
+      d.y = point.y;
+    });
+
+    // create hacky v4 curved link generator for radial
+    var curvedLine = function(d) {
+      var mid = (d.source.radial + d.target.radial) / 2;
+      var v0 = toCartesian(mid, d.source.theta);
+      var v1 = toCartesian(mid, d.target.theta);
+      return "M" + d.source.x + "," + d.source.y
+        + "C" + v0.x + "," + v0.y
+        + " " + v1.x + "," + v1.y
+        + " " + d.target.x + "," + d.target.y;
+    };
+
+    drawLinks(g, root.links(), curvedLine);
+    drawNodes(g, root.descendants(), true);
+}
+
+function drawCirclePacking(id, root) {
+  var svg = d3.select("body").select("#" + id);
+  svg.attr("width", config.w);
+  svg.attr("height", config.h);
+
+  var g = svg.append("g");
+  g.attr("id", "plot");
+
+  // translate so circle is in middle of plot area
+  var xshift = config.pad + (config.w - config.d) / 2;
+  var yshift = config.pad + (config.h - config.d) / 2;
+  g.attr("transform", translate(xshift, yshift));
+
+  // calculate sum for nested circles
+  root.sum(function(d) { return d.size; });
+
+  // setup circle packing layout
+  var diameter = config.d - 2 * config.pad;
+  var pack = d3.pack().size([diameter, diameter]).padding(1);
+
+  // run layout to calculate x, y, and r attributes
+  pack(root);
+
+  // draw nested circles
+  drawNodes(g, root.descendants(), false);
+}
+
+function drawTreeMap(id, root) {
+  var svg = d3.select("body").select("#" + id);
+  svg.attr("width", config.w);
+  svg.attr("height", config.h);
+
+  var g = svg.append("g");
+  g.attr("id", "plot");
+
+  g.attr("transform", translate(config.pad, config.pad));
+
+  // calculate sum for nested circles
+  root.sum(function(d) { return d.size; });
+
+  // setup treemap layout
+  var treemap = d3.treemap()
+    .padding(5)
+    .size([ config.w - 2 * config.pad,
+            config.h - 2 * config.pad]);
+
+  // run layout to calculate x, y, and r attributes
+  treemap(root);
+
+  // draw nested rectangles
+  var rects = g.selectAll("rect")
+    .data(root.descendants())
+    .enter()
+    .append("rect")
+    .attr("x", function(d) { return d.x0; })
+    .attr("y", function(d) { return d.y0; })
+    .attr("width", function(d) { return d.x1 - d.x0; })
+    .attr("height", function(d) { return d.y1 - d.y0; })
+    .attr("id", function(d) { return d.data.name; })
+    .attr("class", "node")
+    .style("fill", function(d) {return color(d.depth)})
+    .on("mouseover.tooltip", function(d) {
+      show_tooltip(g, d3.select(this));
+      d3.select(this).classed("selected", true);
+    })
+    .on("mouseout.tooltip", function(d) {
+      g.select("#tooltip").remove();
+      d3.select(this).classed("selected", false);
+    });
+
+}
+
+// icicle = partition
+function drawIcicleLayout(id, root) {
+  var svg = d3.select("body").select("#" + id);
+  svg.attr("width", config.w);
+  svg.attr("height", config.h);
+
+  var g = svg.append("g");
+  g.attr("id", "plot");
+  g.attr("transform", translate(config.pad, config.pad));
+
+  // calculate sum for rectangles
+    root.sum(function(d) { return d.size; });
+
+    // setup node layout generator
+    var partition = d3.partition()
+      .size([ config.w - 2 * config.pad,
+              config.h - 2 * config.pad]);
+
+    // run layout to calculate x0, y0, x1, and y1 attributes
+    partition(root);
+
+    var rects = g.selectAll("rect")
+      .data(root.descendants())
+      .enter()
+      .append("rect")
+      .attr("x", function(d) { return d.x0; })
+      .attr("y", function(d) { return d.y0; })
+      .attr("width", function(d) { return d.x1 - d.x0; })
+      .attr("height", function(d) { return d.y1 - d.y0; })
+      .attr("id", function(d) { return d.data.name; })
+      .attr("class", "node")
+      .style("fill", function(d) {return color(d.depth)})
+      .on("mouseover.tooltip", function(d) {
+        show_tooltip(g, d3.select(this));
+        d3.select(this).classed("selected", true);
+        d3.select(this).raise();
+      })
+      .on("mouseout.tooltip", function(d) {
+        g.select("#tooltip").remove();
+        d3.select(this).classed("selected", false);
+      });
+}
+</script>
+</body>

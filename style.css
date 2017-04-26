@@ -1,0 +1,29 @@
+body {
+  font-family: 'Source Sans Pro', sans-serif;
+  font-weight: 300;
+  text-align: center;
+  background-color: #eeeeee;
+}
+
+svg {
+  background-color: white;
+}
+
+b {
+  font-weight: 900;
+}
+
+.node {
+  stroke: silver;
+  stroke-width: 1px;
+}
+
+.link {
+  fill: none;
+  stroke: silver;
+  stroke-width: 1px;
+}
+
+.selected {
+  stroke: red !important;
+}
