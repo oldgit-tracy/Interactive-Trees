@@ -18,26 +18,84 @@
 </head>
 
 <body>
+<div id= "title">
+<h1>Homework 4 -- Trees</h1>
+<h1>Description</h1>
+<p align="left"> The visualization dataset comes from <a href ="https://gist.github.com/sjengle/bae96276eb80c0f1b61e58cef47b2529">Java 8 API Hierarchy</a>.
+  The visualization below shows use use node link layouts (traditional, dendrogram) with different edge types
+  (straight, curved) in different coordinate systems (Cartesian/rectangular vs polar/circular), and
+  space-filling techniques (circle packing, treemap, partition/icicle, sunburst). The code are modified from <a href="http://bl.ocks.org/sjengle/cdda19c7942c2ff569161ee0566e1396">here</a>.
+<h1>D3 Visualization</h1>
+</div>
+
+<div id="graph">
+
 <h2>Traditional Node Layout, Straight Edges</h2>
 <svg id="traditional"></svg>
+<p align="left">
+  This is a traditional node link layouts with straight edge types in rectangular system.
+  The advantage of using this structure is that child nodes are placed below parent nodes by level and root is at top,
+  and connected by straight lines, which makes it obviously to count the level of nodes and see the hierarchy
+  structures. Also, the edges connect to its adjacent nodes. The disadvantage about this type of layout is that
+  it used up the sceen space easily if the data are distributed. It will be a bit difficult to view a specific node if it happens that each parent node have too many children node.
 
-<h2>Dendrogram Node Layout, Curved Edges</h2>
+</p>
+
+<!-- <h2>Dendrogram Node Layout, Curved Edges</h2>
 <svg id="dendrogram"></svg>
+<p align="left">
+  Dendrogram is another type of node-link layout. Similiar as traditional node-link layout,
 
 <h2>Circular Traditional Node Layout, Straight Edges</h2>
 <svg id="circular_traditional"></svg>
+<p align="left">
+
+</p> -->
 
 <h2>Circular Dendrogram Node Layout, Curved Edges</h2>
 <svg id="circular_dendrogram"></svg>
+<p align="left">
+  The visualization is a circular dendrogram node-link layout with curved edge types in polar/circular systems.
+  The root is in the center of the circle. The advantage of this visualization is that it doesnt take much
+  screen space, and it is easy to view the nodes` hierarchy and inherit at different levels. However, from the visualization,
+  we can clearly see the disadvantage that unlike tradiational node-link layout, the position of some parent
+  nodes and child nodes exist in same leve, which is messed up in circlular dendrogram node-link layout.
+</p>
 
 <h2>Circle Packing</h2>
 <svg id="circle_packing"></svg>
+<p align="left">
+  Circle packing is one of the most common space-filling techniques. The biggest outer circle is the root,
+  and hierarchies layout is colored based on the either similarly to others in the same category, or nested within larger groups.
+  The advanatage of circle packing diagram is to show the various groups and hierarchical structures vary in size and other properties.
+  The confusing part about the visualization is the size of the circles. If you look at the details closer, you will find that some child node
+  size is even bigger than the parent nodes from other category or even same level child nodes.
+</p>
 
-<h2>Treemap</h2>
+<!-- <h2>Treemap</h2>
 <svg id="treemap"></svg>
+<p align="left">
+
+</p> -->
 
 <h2>Icicle Layout</h2>
 <svg id="icicle_layout"></svg>
+<p align="left">
+  Icicle layout is one of the most common space-filling techniques. From the hierarchy structure,
+  it is actually similar to the traditional node-link layout, but the only differences between them is just the
+  technique. Compared to the traditional node-link layout, icicle layout is easier to observe the size of child node
+  based on the width of each parent nodes.
+</p>
+
+
+<h2>Zoomable Sunburst</h2>
+<svg id="sunburst"></svg>
+<p align="left">
+  Sunburst tree diagram is a radial space-filling visualisation. The structure of hierarchy layout is similar to the icicle layout, but in a circular system.
+  The root is in the center of the diagram, and children is surrounding around the parent nodes. Sunburst combines some advantages from other tree layouts.
+  It is easy to see the node-link hierarchies and nodes`s size based on the structure/layout and colors.
+  The disadvantage is that it occupies up the screen space just like traditional node link diagram.
+</p>
 
 <script>
 // used to color node by depth
@@ -114,12 +172,13 @@ function callback(error, data) {
 
 
     drawTraditionalStraight("traditional", root.copy());
-    drawDendrogramCurved("dendrogram", root.copy());
-    drawCircularTraditional("circular_traditional", root.copy());
+    //drawDendrogramCurved("dendrogram", root.copy());
+    //drawCircularTraditional("circular_traditional", root.copy());
     drawCircularDendrogram("circular_dendrogram", root.copy());
     drawCirclePacking("circle_packing", root.copy());
-    drawTreeMap("treemap", root.copy());
+    //drawTreeMap("treemap", root.copy());
     drawIcicleLayout("icicle_layout", root.copy());
+    drawSunburst("sunburst", root.copy());
 }
 
 function drawNodes(g, nodes, raise) {
@@ -164,7 +223,7 @@ function drawTraditionalStraight(id, root) {
   g.attr("id", "plot");
   g.attr("transform", translate(config.pad, config.pad));
 
-  // TODO
+
   var tree = d3.tree()
     .size([config.w - 2 * config.pad,
             config.h - 2 * config.pad]);
@@ -181,6 +240,7 @@ function drawTraditionalStraight(id, root) {
 
 }
 
+
 function drawDendrogramCurved(id, root) {
   var svg = d3.select("body").select("#" + id);
   svg.attr("width", config.w);
@@ -190,7 +250,7 @@ function drawDendrogramCurved(id, root) {
   g.attr("id", "plot");
   g.attr("transform", translate(config.pad, config.pad));
 
-  // TODO
+
   // setup node layout generator
   var cluster = d3.cluster()
     .size([ config.w - 2 * config.pad,
@@ -411,5 +471,89 @@ function drawIcicleLayout(id, root) {
         d3.select(this).classed("selected", false);
       });
 }
+
+
+function drawSunburst(id, root) {
+
+      var radius = (Math.min(config.w, 700) / 2) - 10;
+
+      x = d3.scaleLinear()
+        .range([0, 2 * Math.PI]);
+
+      y = d3.scaleSqrt()
+        .range([0, radius]);
+
+
+      var arc = d3.arc()
+        .startAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x0))); })
+        .endAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x1))); })
+        .innerRadius(function(d) { return Math.max(0, y(d.y0)); })
+        .outerRadius(function(d) { return Math.max(0, y(d.y1)); });
+
+
+
+      var svg = d3.select("body").select("#" + id);
+        svg.attr("width", config.w)
+        svg.attr("height", config.h*1.5)
+
+      var g = svg.append("g");
+        g.attr("transform", translate(config.w/2, config.h*1.5/2));
+
+        // translate so circle is in middle of plot area
+      var xshift = config.pad + (config.w - config.d) / 2;
+      var yshift = config.pad + (config.h - config.d) / 2;
+
+      // calculate sum for nested circles
+      root.sum(function(d) { return d.size; });
+
+      var partition = d3.partition();
+
+      // run layout to calculate x0, y0, x1, and y1 attributes
+      partition(root);
+
+      g.selectAll("path")
+        .data(root.descendants())
+        .enter()
+        .append("g")
+        .attr("class", "node")
+        .append("path")
+        .attr("d", arc)
+        .style("fill", function(d) {return color(d.depth)})
+        .attr("id", function(d) { return d.data.name; })
+        .on("mouseover.tooltip", function(d) {
+          show_tooltip(g, d3.select(this));
+          d3.select(this).classed("selected", true);
+          d3.select(this).raise();
+        })
+        .on("mouseout.tooltip", function(d) {
+          g.select("#tooltip").remove();
+          d3.select(this).classed("selected", false);
+        })
+        // modified code from https://bl.ocks.org/mbostock/4348373
+        .on("click", function(d){
+          g.transition()
+              .duration(750)
+              .tween("scale", function() {
+                var xd = d3.interpolate(x.domain(), [d.x0, d.x1]),
+                    yd = d3.interpolate(y.domain(), [d.y0, 1]),
+                    yr = d3.interpolate(y.range(), [d.y0 ? 20 : 0, radius]);
+                return function(t) { x.domain(xd(t)); y.domain(yd(t)).range(yr(t)); };
+              })
+            .selectAll("path")
+              .attrTween("d", function(d) { return function() { return arc(d); }; });
+        })
+
+    }
+
+
 </script>
+</div>
+<div>
+  <h1>About Author</h1>
+  <p align="left">I am Yuanyuan Ruan, who just graduate in data science major from University of San Francisco.
+    I love data visualization class, because it makes me proud of myself when I managed to get all these beautiful visualizations.
+    In my free time, I like to take online courses about data science, because my short term goal for the near future is to be a good data scientist.
+  </p>
+  <img src="selfie.jpeg" height="500" width="400">
+</div>
 </body>
